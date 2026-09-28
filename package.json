@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js"
+    "start": "node app.js",
+    "version": "auto-changelog -p --hide-credit --output docs/history/CHANGELOG.md --template keepachangelog"
   },
   "repository": {
     "type": "git",
@@ -34,5 +35,9 @@
     "express-rate-limit": "^8.7.0",
     "mongoose": "^9.10.2",
     "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "auto-changelog": "^2.7.0",
+    "git-cliff": "^2.14.2"
   }
 }
