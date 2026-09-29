@@ -1,0 +1,76 @@
+<%- include('../partials/header') %>
+<!--
+
+name: Caleb Thomas
+date: 9/29/26
+updated: 9/29/26
+class: Senior Capstone Project
+file: /views/auth/register.ejs
+========================================================
+ the registration page for the capstone project. This page allows users to create a new account by providing a username, email, and password. The form data is sent to the server for processing and account creation.
+========================================================
+
+
+
+
+-->
+<link rel="stylesheet" href="/css/theme.css">
+<link rel="stylesheet" href="/css/auth.css">
+
+<main class="auth-page">
+	<section class="auth-card" aria-labelledby="login-title">
+		<h1 id="login-title">Welcome back</h1>
+		<p class="auth-subtitle">Sign in to your MCC Capstone account.</p>
+
+		<form  method="post">
+			<div class="form-field">
+				<label for="username">Username</label>
+				<input id="username" name="username" type="text" autocomplete="username" required>
+			</div>
+            <div class="form-field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" required>
+            </div>
+
+			<div class="form-field">
+				<label for="password">Password</label>
+				<input id="password" name="password" type="password" autocomplete="current-password" required>
+			</div>
+
+			<button type="submit">Log in</button>
+		</form>
+
+		<p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
+	</section>
+</main>
+<!-- on submit redirect to home page  if return is the token -->
+
+<script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const pyload = {
+            username: formData.get('username'),
+            email: formData.get('email'),
+            password: formData.get('password')
+        };
+        fetch('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(pyload),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.token) {
+                window.location.href = '/';
+            }
+        });
+    });
+	</script>
+		 
+
+
+
+<%- include('../partials/footer') %>

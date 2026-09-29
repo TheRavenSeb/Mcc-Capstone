@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" data-theme="leather">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="color-scheme" content="dark light" />
+		<title><%= typeof title !== 'undefined' ? title : 'MCC Capstone' %></title>
+
+		
+
+		<script>
+			(() => {
+				const saved = localStorage.getItem('mcc-theme');
+				if (saved) document.documentElement.dataset.theme = saved;
+			})();
+		</script>
+	</head>
+	<body>
+		<header class="site-header">
+			<a class="brand" href="/">MCC Capstone</a>
+			<label class="theme-picker" for="theme-select">
+				Theme
+				<select id="theme-select" aria-label="Choose a theme">
+					<option value="leather">Leather</option>
+					<option value="dark">Dark</option>
+					<option value="light">Light</option>
+				</select>
+			</label>
+		</header>
+
+		<script>
+			const themeSelect = document.getElementById('theme-select');
+			themeSelect.value = document.documentElement.dataset.theme || 'leather';
+			themeSelect.addEventListener('change', ({ target }) => {
+				document.documentElement.dataset.theme = target.value;
+				localStorage.setItem('mcc-theme', target.value);
+			});
+		</script>
