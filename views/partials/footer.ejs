@@ -1,0 +1,31 @@
+<footer class="site-footer">
+	<div class="site-footer__content">
+		<p>&copy; <%= new Date().getFullYear() %> Mcc-Capstone. All rights reserved.</p>
+		<nav aria-label="Footer navigation">
+			<a href="/privacy">Privacy</a>
+			<a href="/terms">Terms</a>
+			<a href="/contact">Contact</a>
+		</nav>
+	</div>
+</footer>
+
+<div id="cookie-banner" class="cookie-banner" role="dialog" aria-label="Cookie notice" hidden>
+	<p>We use cookies to improve your experience on this site.</p>
+	<button id="accept-cookies" type="button">Accept cookies</button>
+</div>
+
+<script>
+	(() => {
+		const banner = document.getElementById('cookie-banner');
+		const acceptButton = document.getElementById('accept-cookies');
+
+		if (!localStorage.getItem('cookiesAccepted')) {
+			banner.hidden = false;
+		}
+
+		acceptButton.addEventListener('click', () => {
+			localStorage.setItem('cookiesAccepted', 'true');
+			banner.hidden = true;
+		});
+	})();
+</script>

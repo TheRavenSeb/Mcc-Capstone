@@ -2,7 +2,7 @@
 
 name: Caleb Thomas
 date: 9/22/26
-updated: 9/28/26
+updated: 9/29/26
 class: Senior Capstone Project
 file: app.js
 ========================================================
@@ -34,7 +34,6 @@ const routeFolderPath = path.join(__dirname, 'routes'); // Path to the routes fo
 Mongo(); // intialize mongo connection
 
 const app = express(); //init app for express
-importRoutes(app, routeFolderPath); // Import all routes
 
 const PORT = process.env.PORT || 3000; //set port to env variable or 3000
 
@@ -56,6 +55,7 @@ app.use(express.urlencoded({ extended: true })); // To parse form data
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(limiter) // Apply rate limiting to all routes
+importRoutes(app, routeFolderPath); // Import all routes
 
 
 

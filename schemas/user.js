@@ -11,7 +11,7 @@ mongoDB schema for user account data
 const mongoose = require('mongoose');
 const schema = new mongoose.Schema({
   Username: { type: String, required: true, unique: true },
-  HashedPassword: { type: String, required: true },
+  Hash: { type: String, required: true },
   Salt: { type: String, required: true },
   Email: { type: String, required: true, unique: true }, 
   DateJoined: { type: Date, default: Date.now },
