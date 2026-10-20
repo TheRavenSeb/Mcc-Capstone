@@ -60,7 +60,7 @@ router.post('/register', (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if the user already exists
-     User.findOne({ username: username }).then(existingUser => {
+    User.findOne({ Username: username }).then(existingUser => {
     if (existingUser) {
         return res.status(400).json({ error: 'User already exists' });
     }
@@ -90,7 +90,7 @@ router.post('/register', (req, res) => {
             }
 
             // Generate a JWT token for the new user
-            const token = jwtHandler.generateToken(username);
+            const token = jwtHandler.generateToken(newUser);
 
             //add to cookie and redirect to home page
             res.cookie('token', token, { expires: new Date(Date.now() + 900000), httpOnly: true });

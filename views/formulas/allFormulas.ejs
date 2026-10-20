@@ -1,0 +1,130 @@
+<%- include('../partials/header') %>
+<link rel="stylesheet" href="/css/theme.css">
+
+<main class="library-page">
+	<header class="library-heading">
+		<div>
+			<p class="eyebrow">Formula library</p>
+			<h1>All formulas</h1>
+		</div>
+		<p>Search the shared collection, compare formulas, and find the right starting point for your next problem.</p>
+	</header>
+
+	<section aria-labelledby="library-controls-heading">
+		<h2 id="library-controls-heading" class="sr-only">Search and filter formulas</h2>
+		<div class="library-controls">
+			<div class="search-field">
+				<label for="formula-search">Search formulas</label>
+				<input id="formula-search" type="search" placeholder="Search by name, expression, tag, or description" autocomplete="off">
+			</div>
+			<select id="tag-filter" aria-label="Filter by tag">
+				<option value="">All tags</option>
+			</select>
+			<select id="variable-filter" aria-label="Filter by variable count">
+				<option value="">Any variables</option>
+				<option value="1">One variable</option>
+				<option value="2">Two variables</option>
+				<option value="3">Three or more variables</option>
+			</select>
+			<select id="sort-formulas" aria-label="Sort formulas">
+				<option value="newest">Newest first</option>
+				<option value="oldest">Oldest first</option>
+				<option value="name">Name A-Z</option>
+			</select>
+		</div>
+	</section>
+
+	<div class="library-summary">
+		<span id="formula-count" aria-live="polite">Loading formulas...</span>
+		<button id="clear-filters" class="text-link" type="button" hidden>Clear filters</button>
+	</div>
+	<section id="formula-library" class="formula-library-grid" aria-live="polite" aria-busy="true"></section>
+</main>
+
+<script>
+(() => {
+	const search = document.querySelector('#formula-search');
+	const tagFilter = document.querySelector('#tag-filter');
+	const variableFilter = document.querySelector('#variable-filter');
+	const sortFormulas = document.querySelector('#sort-formulas');
+	const clearFilters = document.querySelector('#clear-filters');
+	const count = document.querySelector('#formula-count');
+	const library = document.querySelector('#formula-library');
+	let formulas = [];
+
+	function escapeHtml(value) {
+		return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+	}
+
+	function getTags(formula) {
+		return Array.isArray(formula.Tags) ? formula.Tags : [];
+	}
+
+	function renderTags(tags) {
+		return tags.slice(0, 3).map((tag) => `<span class="library-tag">${escapeHtml(tag)}</span>`).join('');
+	}
+
+	function renderCards(items) {
+		library.setAttribute('aria-busy', 'false');
+		if (!items.length) {
+			library.innerHTML = '<p class="library-empty">No formulas match those filters.</p>';
+			return;
+		}
+		library.innerHTML = items.map((formula) => {
+			const id = formula._id || formula.id;
+			const tags = getTags(formula);
+			const variables = Array.isArray(formula.Variables) ? formula.Variables : [];
+			return `<article class="library-card">
+				<h2><a href="/formula/search/${encodeURIComponent(id)}">${escapeHtml(formula.Name || 'Untitled formula')}</a></h2>
+				<p class="library-card__expression">${escapeHtml(formula.Formula || '')}</p>
+				<p class="library-card__description">${escapeHtml(formula.Description || 'No description provided.')}</p>
+				<div class="library-card__footer">${renderTags(tags)}<span>${variables.length} variable${variables.length === 1 ? '' : 's'}</span></div>
+			</article>`;
+		}).join('');
+	}
+
+	function matchesVariableFilter(formula) {
+		const count = Array.isArray(formula.Variables) ? formula.Variables.length : 0;
+		return !variableFilter.value || (variableFilter.value === '3' ? count >= 3 : count === Number(variableFilter.value));
+	}
+
+	function applyFilters() {
+		const query = search.value.trim().toLowerCase();
+		const selectedTag = tagFilter.value.toLowerCase();
+		const filtered = formulas.filter((formula) => {
+			const tags = getTags(formula);
+			const searchable = [formula.Name, formula.Formula, formula.Description, ...tags].join(' ').toLowerCase();
+			return (!query || searchable.includes(query)) && (!selectedTag || tags.some((tag) => tag.toLowerCase() === selectedTag)) && matchesVariableFilter(formula);
+		}).sort((first, second) => {
+			if (sortFormulas.value === 'name') return String(first.Name).localeCompare(String(second.Name));
+			const firstDate = new Date(first.createdAt || 0).getTime();
+			const secondDate = new Date(second.createdAt || 0).getTime();
+			return sortFormulas.value === 'oldest' ? firstDate - secondDate : secondDate - firstDate;
+		});
+		count.textContent = `${filtered.length} formula${filtered.length === 1 ? '' : 's'} found`;
+		clearFilters.hidden = !query && !selectedTag && !variableFilter.value;
+		renderCards(filtered);
+	}
+
+	function populateTags() {
+		const tags = [...new Set(formulas.flatMap(getTags))].sort((first, second) => first.localeCompare(second));
+		tags.forEach((tag) => tagFilter.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`));
+	}
+
+	[search, tagFilter, variableFilter, sortFormulas].forEach((control) => control.addEventListener('input', applyFilters));
+	clearFilters.addEventListener('click', () => {
+		search.value = '';
+		tagFilter.value = '';
+		variableFilter.value = '';
+		sortFormulas.value = 'newest';
+		applyFilters();
+	});
+
+	fetch('/formula/all-data')
+		.then((response) => { if (!response.ok) throw new Error('Unable to load formulas'); return response.json(); })
+		.then((data) => { formulas = Array.isArray(data) ? data : (data.formulas || []); populateTags(); applyFilters(); })
+		.catch(() => { count.textContent = 'Unable to load formulas'; library.setAttribute('aria-busy', 'false'); library.innerHTML = '<p class="library-empty">The formula library is unavailable right now.</p>'; });
+})();
+</script>
+
+<%- include('../partials/footer') %>

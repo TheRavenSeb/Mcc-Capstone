@@ -1,0 +1,255 @@
+<%- include('../partials/header') %>
+<link rel="stylesheet" href="/css/theme.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@13.2.3/lib/browser/math.js"></script>
+
+<main class="create-page">
+    <header class="page-heading">
+        <p class="eyebrow">Formula workspace</p>
+        <h1>Create a formula</h1>
+        <p>Turn a useful expression into a clear, reusable resource for the MCC community.</p>
+    </header>
+
+    <div class="creator-layout">
+        <section class="creator-panel" aria-labelledby="details-heading">
+            <div class="panel-heading">
+                <span class="panel-number">01</span>
+                <div>
+                    <h2 id="details-heading">Formula details</h2>
+                    <p>Give your formula enough context to be useful later.</p>
+                </div>
+            </div>
+
+            <form action="/formula/create" method="POST" id="formula-form">
+                <div class="field-group">
+                    <label for="name">Formula name</label>
+                    <input id="name" name="Name" required maxlength="100" placeholder="Quadratic function">
+                </div>
+                <div class="field-group">
+                    <label for="expression">Expression</label>
+                    <textarea id="expression" name="Formula" required rows="3" placeholder="x^2 - 4*x + 3">x^2 - 4*x + 3</textarea>
+                    <p class="field-help">Use <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>, parentheses, and Math functions.</p>
+                    <div class="symbol-tools" aria-label="Insert symbols">
+                        <span class="symbol-tools__label">Insert</span>
+                        <button type="button" class="symbol-button" data-insert="pi">&#960;</button>
+                        <button type="button" class="symbol-button" data-insert="sqrt(">&#8730;</button>
+                        <button type="button" class="symbol-button" data-insert="^">x<sup>y</sup></button>
+                        <button type="button" class="symbol-button" data-insert="*">&middot;</button>
+                        <button type="button" class="symbol-button" data-insert="()">( )</button>
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label for="variables">Variables</label>
+                        <input id="variables" name="Variables" required value="x" placeholder="x, y">
+                        <p class="field-help">Comma-separated.</p>
+                    </div>
+                    <div class="field-group">
+                        <label for="tags">Tags</label>
+                        <input id="tags" name="Tags" required placeholder="algebra, math">
+                        <p class="field-help">Comma-separated.</p>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="Description" required rows="3" placeholder="Explain when this formula is useful."></textarea>
+                </div>
+                <div class="field-group">
+                    <label for="contributor">Contributor</label>
+                    <input id="contributor" name="Contributor" required placeholder="Your name or team">
+                </div>
+                <input type="hidden" name="Constances" value="{}">
+                <p id="status" class="form-status" role="alert" aria-live="polite"></p>
+                <button class="button button--primary" type="submit">Save formula <span aria-hidden="true">&#8594;</span></button>
+            </form>
+        </section>
+
+        <aside class="creator-panel preview-panel" aria-labelledby="preview-heading">
+            <div class="panel-heading">
+                <span class="panel-number">02</span>
+                <div>
+                    <h2 id="preview-heading">Live preview</h2>
+                    <p>Test the expression before you save it.</p>
+                </div>
+            </div>
+            <div class="sample-calculation">
+                <p class="preview-label">Variable values</p>
+                <div id="variable-inputs" class="variable-inputs"></div>
+                <p id="constants-label" class="preview-label" hidden>Constants</p>
+                <div id="constant-inputs" class="variable-inputs"></div>
+                <output id="sample-y" for="expression">Awaiting expression</output>
+            </div>
+            <div id="graph" class="plotly-graph" role="img" aria-label="Live graph of the formula"></div>
+        </aside>
+    </div>
+</main>
+
+<script>
+(() => {
+    const form = document.querySelector('#formula-form');
+    const expression = document.querySelector('#expression');
+    const variablesField = document.querySelector('#variables');
+    const variableInputs = document.querySelector('#variable-inputs');
+    const constantInputs = document.querySelector('#constant-inputs');
+    const constantsLabel = document.querySelector('#constants-label');
+    const constantsField = document.querySelector('[name="Constances"]');
+    const sampleY = document.querySelector('#sample-y');
+    const status = document.querySelector('#status');
+    const graph = document.querySelector('#graph');
+
+    function getOutputVariable() {
+        const leftSide = expression.value.split('=')[0].trim();
+        return /^[A-Za-z_$][\w$]*$/.test(leftSide) ? leftSide : '';
+    }
+
+    function getExpressionSymbols() {
+        const rightSide = expression.value.includes('=') ? expression.value.split('=').slice(1).join('=') : expression.value;
+        return (rightSide.match(/[A-Za-z_$][\w$]*/g) || []).flatMap((token) => {
+            if (/^[a-z]{2}$/.test(token) && !['pi', 'sin', 'cos', 'tan', 'log'].includes(token)) return token.split('');
+            return [token];
+        });
+    }
+
+    function getVariables() {
+        const outputVariable = getOutputVariable();
+        return [...new Set(variablesField.value.split(',').map((variable) => variable.trim()))]
+            .filter((variable) => /^[A-Za-z_$][\w$]*$/.test(variable) && variable !== outputVariable);
+    }
+
+    function getConstants() {
+        const outputVariable = getOutputVariable();
+        const variables = getVariables();
+        return [...new Set(getExpressionSymbols())]
+            .filter((constant) => /^[A-Za-z_$][\w$]*$/.test(constant) && !variables.includes(constant) && constant !== outputVariable && !['Math', 'PI', 'E', 'e', 'pi', 'sin', 'cos', 'tan', 'sqrt', 'abs', 'log', 'exp'].includes(constant));
+    }
+
+    function renderInputGroup(container, names, previousValues, prefix, defaultValue) {
+        container.replaceChildren();
+        names.forEach((name, index) => {
+            const label = document.createElement('label');
+            label.textContent = name;
+            label.htmlFor = `${prefix}-${name}`;
+            const input = document.createElement('input');
+            input.id = `${prefix}-${name}`;
+            input.name = name;
+            input.type = 'number';
+            input.step = 'any';
+            input.value = previousValues[name] ?? (typeof defaultValue === 'function' ? defaultValue(index) : defaultValue);
+            input.setAttribute('aria-label', `${prefix === 'constant' ? 'Constant' : 'Sample value'} for ${name}`);
+            label.appendChild(input);
+            container.appendChild(label);
+        });
+    }
+
+    function renderVariableInputs() {
+        const variables = getVariables();
+        const constants = getConstants();
+        const previousValues = Object.fromEntries([...document.querySelectorAll('#variable-inputs input, #constant-inputs input')].map((input) => [input.name, input.value]));
+        renderInputGroup(variableInputs, variables, previousValues, 'sample', (index) => index === 0 ? '0' : '1');
+        renderInputGroup(constantInputs, constants, previousValues, 'constant', '1');
+        constantsLabel.hidden = !constants.length;
+        syncConstants();
+    }
+
+    function compile() {
+        const variables = getVariables();
+        const constants = getConstants();
+        const symbols = [...variables, ...constants];
+        if (!variables.length) throw new Error('Add at least one valid variable.');
+        let mathExpression = expression.value.includes('=')
+            ? expression.value.split('=').slice(1).join('=').trim()
+            : expression.value.trim();
+        mathExpression = mathExpression.replace(/\bMath\.(PI|sin|cos|tan|sqrt|abs|log|exp)\b/g, '$1');
+        [...symbols].sort((first, second) => second.length - first.length).forEach((first) => {
+            symbols.forEach((second) => {
+                const escaped = `${first}${second}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                mathExpression = mathExpression.replace(new RegExp(`\\b${escaped}\\b`, 'g'), `${first}*${second}`);
+            });
+        });
+        return { variables, constants, evaluate: math.compile(mathExpression) };
+    }
+
+    function getValues(names, container) {
+        return names.map((name) => Number(container.querySelector(`[name="${name}"]`).value));
+    }
+
+    function syncConstants() {
+        const constants = getConstants();
+        constantsField.value = JSON.stringify(Object.fromEntries(constants.map((constant) => [constant, Number(constantInputs.querySelector(`[name="${constant}"]`)?.value || 1)])));
+    }
+
+    function draw() {
+        if (!window.math || !window.Plotly) throw new Error('Graphing libraries are unavailable. Refresh the page and try again.');
+        const compiled = compile();
+        const values = getValues(compiled.variables, variableInputs);
+        const constantValues = getValues(compiled.constants, constantInputs);
+        const allValues = Object.fromEntries([...compiled.variables.map((variable, index) => [variable, values[index]]), ...compiled.constants.map((constant, index) => [constant, constantValues[index]])]);
+        const axisVariable = compiled.variables.includes('x') ? 'x' : compiled.variables[0];
+        const axisIndex = compiled.variables.indexOf(axisVariable);
+        const centerX = Number.isFinite(values[axisIndex]) ? values[axisIndex] : 0;
+        const xValues = [];
+        const yValues = [];
+        const scope = Object.fromEntries(Object.entries(allValues).filter(([variable]) => variable !== axisVariable));
+        for (let index = 0; index <= 120; index += 1) {
+            const x = centerX - 10 + (index / 120) * 20;
+            xValues.push(x);
+            yValues.push(compiled.evaluate.evaluate({ ...scope, [axisVariable]: x }));
+        }
+        const value = compiled.evaluate.evaluate(allValues);
+        const styles = getComputedStyle(document.documentElement);
+        sampleY.textContent = Number.isFinite(value) ? String(value) : 'Undefined';
+        Plotly.react(graph, [{ x: xValues, y: yValues, mode: 'lines', line: { color: styles.getPropertyValue('--accent'), width: 3 }, connectgaps: false, name: 'Formula' }, { x: [centerX], y: [value], mode: 'markers', marker: { color: styles.getPropertyValue('--accent'), size: 10 }, name: 'Sample' }], { autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: styles.getPropertyValue('--bg'), font: { color: styles.getPropertyValue('--text') }, margin: { t: 20, r: 20, b: 50, l: 55 }, xaxis: { gridcolor: styles.getPropertyValue('--border'), zerolinecolor: styles.getPropertyValue('--border'), title: axisVariable }, yaxis: { gridcolor: styles.getPropertyValue('--border'), zerolinecolor: styles.getPropertyValue('--border'), title: 'Result' } }, { responsive: true, displaylogo: false });
+        status.textContent = '';
+    }
+
+    function update() {
+        try {
+            draw();
+        } catch (error) {
+            sampleY.textContent = 'Check expression';
+            status.textContent = error.message.includes('Graphing libraries')
+                ? error.message
+                : `Expression error: ${error.message}`;
+            console.error('Formula preview error:', error);
+        }
+    }
+
+    variablesField.addEventListener('input', () => {
+        renderVariableInputs();
+        update();
+    });
+    expression.addEventListener('input', () => {
+        renderVariableInputs();
+        update();
+    });
+    form.addEventListener('input', update);
+    variableInputs.addEventListener('input', update);
+    constantInputs.addEventListener('input', () => {
+        syncConstants();
+        update();
+    });
+    document.querySelectorAll('[data-insert]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const start = expression.selectionStart;
+            const end = expression.selectionEnd;
+            const insertion = button.dataset.insert;
+            expression.setRangeText(insertion, start, end, 'end');
+            expression.focus();
+            update();
+        });
+    });
+    form.addEventListener('submit', function (event) {
+        try {
+            const compiled = compile();
+            syncConstants();
+            compiled.evaluate.evaluate(Object.fromEntries([...compiled.variables.map((variable, index) => [variable, getValues(compiled.variables, variableInputs)[index]]), ...compiled.constants.map((constant, index) => [constant, getValues(compiled.constants, constantInputs)[index]])]));
+        }
+        catch (error) { event.preventDefault(); update(); }
+    });
+    window.addEventListener('resize', update);
+    renderVariableInputs();
+    update();
+})();
+</script>
+
+<%- include('../partials/footer') %>

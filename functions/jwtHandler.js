@@ -14,8 +14,13 @@ const secretKey = process.env.JWT_SECRET; // Replace with your actual
 //will return a jwt token for the user to use for authentication
 
 
-
-async function generateToken(user, expires = '1h') {
+/**
+ * Generates a JWT token for the given user.
+ * @param {Object} user 
+ * @param {String} expires = "1h"
+ * @returns {String} The generated JWT token.
+ */
+function generateToken(user, expires = '1h') {
     const token = jwt.sign(
     { userId: user.Username },
     secretKey,
@@ -25,7 +30,12 @@ async function generateToken(user, expires = '1h') {
   return token;
 }
 
-async function verifyToken(token) {
+/**
+ * Verifies a JWT token.
+ * @param {JwtToken} token 
+ * @returns {Object|undefined} The decoded token if valid, otherwise undefined.
+ */
+function verifyToken(token) {
     try {
         const decoded = jwt.verify(token, secretKey);
         return decoded;

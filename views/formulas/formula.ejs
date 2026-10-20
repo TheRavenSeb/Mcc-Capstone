@@ -1,0 +1,152 @@
+<%- include('../partials/header') %>
+<link rel="stylesheet" href="/css/theme.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@13.2.3/lib/browser/math.js"></script>
+
+<main class="formula-detail-page">
+    <header class="formula-detail-heading">
+        <p class="eyebrow">Formula library</p>
+        <h1><%= formula.Name || 'Formula details' %></h1>
+        <p><%= formula.Description %></p>
+        <div class="formula-meta">
+            <span><%= (formula.Tags || []).join(' / ') %></span>
+            <span>Contributed by <%= (formula.Contributor || []).join(', ') %></span>
+        </div>
+    </header>
+
+    <div class="formula-workspace">
+        <section class="formula-expression-panel" aria-labelledby="expression-heading">
+            <p class="panel-number">EXPRESSION</p>
+            <h2 id="expression-heading"><%= formula.Formula %></h2>
+            <p class="formula-note">Change the values to explore how this formula behaves.</p>
+        </section>
+
+        <section class="calculator-panel" aria-labelledby="calculator-heading">
+            <div class="panel-heading">
+                <span class="panel-number">01</span>
+                <div>
+                    <h2 id="calculator-heading">Calculate</h2>
+                    <p>Enter a value for each variable.</p>
+                </div>
+            </div>
+            <form id="calculator-form">
+                <div id="input-fields" class="detail-inputs"></div>
+                <p id="constant-label" class="preview-label" hidden>Constants</p>
+                <div id="constant-fields" class="detail-inputs"></div>
+                <button class="button button--primary" type="submit">Calculate <span aria-hidden="true">&#8594;</span></button>
+            </form>
+            <output id="result" class="detail-result" aria-live="polite">Enter values to calculate.</output>
+        </section>
+
+        <section class="detail-graph-panel" aria-labelledby="graph-heading">
+            <div class="panel-heading">
+                <span class="panel-number">02</span>
+                <div>
+                    <h2 id="graph-heading">Live graph</h2>
+                    <p>The first variable controls the horizontal axis.</p>
+                </div>
+            </div>
+            <div id="formula-graph" class="plotly-graph" role="img" aria-label="Graph of this formula"></div>
+        </section>
+    </div>
+</main>
+
+<script>
+(() => {
+    const formulaText = <%- JSON.stringify(formula.Formula || '') %>;
+    const savedVariables = <%- JSON.stringify(formula.Variables || []) %>;
+    const savedConstants = <%- JSON.stringify(formula.Constances || {}) %>;
+    const leftSide = formulaText.includes('=') ? formulaText.split('=')[0].trim() : '';
+    const outputVariable = /^[A-Za-z_$][\w$]*$/.test(leftSide) ? leftSide : '';
+    const expression = formulaText.includes('=')
+        ? formulaText.split('=').slice(1).join('=').trim()
+        : formulaText.trim();
+    const inferredVariables = (expression.match(/[A-Za-z_$][\w$]*/g) || []).flatMap((token) => {
+        if (/^[a-z]{2}$/.test(token) && !['pi', 'sin', 'cos', 'tan', 'log'].includes(token)) return token.split('');
+        return [token];
+    });
+    const mathNames = ['Math', 'PI', 'E', 'e', 'pi', 'sin', 'cos', 'tan', 'sqrt', 'abs', 'log', 'exp'];
+    const savedConstantNames = Object.keys(savedConstants || {});
+    const variables = [...new Set([...(savedVariables || []), ...inferredVariables])]
+        .filter((name) => !mathNames.includes(name) && name !== outputVariable && !savedConstantNames.includes(name));
+    const constants = [...new Set([...savedConstantNames, ...inferredVariables])]
+        .filter((name) => !mathNames.includes(name) && name !== outputVariable && !variables.includes(name));
+    const inputFields = document.querySelector('#input-fields');
+    const constantFields = document.querySelector('#constant-fields');
+    const constantLabel = document.querySelector('#constant-label');
+    const result = document.querySelector('#result');
+    const form = document.querySelector('#calculator-form');
+    const graph = document.querySelector('#formula-graph');
+
+    function addInput(container, name, value, labelPrefix) {
+        const label = document.createElement('label');
+        label.textContent = name;
+        label.htmlFor = `${labelPrefix}-${name}`;
+        const input = document.createElement('input');
+        input.id = `${labelPrefix}-${name}`;
+        input.type = 'number';
+        input.step = 'any';
+        input.name = name;
+        input.value = value;
+        input.required = true;
+        label.appendChild(input);
+        container.appendChild(label);
+    }
+
+    variables.forEach((variable, index) => addInput(inputFields, variable, index === 0 ? '0' : '1', 'value'));
+    constants.forEach((constant) => addInput(constantFields, constant, savedConstants[constant] ?? '1', 'constant'));
+    constantLabel.hidden = !constants.length;
+
+    function compile() {
+        let normalizedExpression = expression.replace(/\bMath\.(PI|sin|cos|tan|sqrt|abs|log|exp)\b/g, '$1');
+        const symbols = [...variables, ...constants];
+        [...symbols].sort((first, second) => second.length - first.length).forEach((first) => {
+            symbols.forEach((second) => {
+                const escaped = `${first}${second}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                normalizedExpression = normalizedExpression.replace(new RegExp(`\\b${escaped}\\b`, 'g'), `${first}*${second}`);
+            });
+        });
+        return math.compile(normalizedExpression);
+    }
+
+    function getValues(names, container) {
+        return names.map((name) => Number(container.querySelector(`[name="${name}"]`).value));
+    }
+
+    function draw() {
+        if (!window.math || !window.Plotly) throw new Error('Graphing libraries are unavailable. Refresh the page and try again.');
+        const values = getValues(variables, inputFields);
+        const constantValues = getValues(constants, constantFields);
+        const scopeValues = Object.fromEntries([...variables.map((variable, index) => [variable, values[index]]), ...constants.map((constant, index) => [constant, constantValues[index]])]);
+        const evaluate = compile();
+        const axisVariable = variables.includes('x') ? 'x' : variables[0];
+        const axisIndex = variables.indexOf(axisVariable);
+        const centerX = Number.isFinite(values[axisIndex]) ? values[axisIndex] : 0;
+        const scope = Object.fromEntries(Object.entries(scopeValues).filter(([variable]) => variable !== axisVariable));
+        const xValues = [];
+        const yValues = [];
+        for (let index = 0; index <= 120; index += 1) {
+            const x = centerX - 10 + (index / 120) * 20;
+            xValues.push(x);
+            yValues.push(evaluate.evaluate({ ...scope, [axisVariable]: x }));
+        }
+        const value = evaluate.evaluate(scopeValues);
+        const styles = getComputedStyle(document.documentElement);
+        result.textContent = Number.isFinite(value) ? `Result: ${value}` : 'Unable to calculate.';
+        Plotly.react(graph, [{ x: xValues, y: yValues, mode: 'lines', line: { color: styles.getPropertyValue('--accent'), width: 3 }, connectgaps: false, name: 'Formula' }, { x: [centerX], y: [value], mode: 'markers', marker: { color: styles.getPropertyValue('--accent'), size: 10 }, name: 'Sample' }], { autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: styles.getPropertyValue('--bg'), font: { color: styles.getPropertyValue('--text') }, margin: { t: 20, r: 20, b: 50, l: 55 }, xaxis: { gridcolor: styles.getPropertyValue('--border'), zerolinecolor: styles.getPropertyValue('--border'), title: axisVariable }, yaxis: { gridcolor: styles.getPropertyValue('--border'), zerolinecolor: styles.getPropertyValue('--border'), title: 'Result' } }, { responsive: true, displaylogo: false });
+    }
+
+    function calculate(event) {
+        if (event) event.preventDefault();
+        try { draw(); }
+        catch (error) { result.textContent = error.message.includes('Graphing libraries') ? error.message : 'Unable to calculate this formula.'; }
+    }
+
+    form.addEventListener('input', calculate);
+    form.addEventListener('submit', calculate);
+    window.addEventListener('resize', calculate);
+    calculate();
+})();
+</script>
+
+<%- include('../partials/footer') %>

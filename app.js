@@ -25,6 +25,7 @@ const rateLimit = require('express-rate-limit');
 
 const Mongo = require('./functions/mongoHandler.js');
 const mongoose = require('mongoose');
+const jwtHandler = require('./functions/jwtHandler.js');
 
 
 //import route modules
@@ -54,6 +55,16 @@ app.use('/scripts', express.static(path.join(__dirname, 'scripts')));
 app.use(express.urlencoded({ extended: true })); // To parse form data
 app.use(bodyParser.json());
 app.use(cookieParser());
+app.use((req, res, next) => {
+  const token = req.cookies.token;
+
+  if (token) {
+    const decoded = jwtHandler.verifyToken(token);
+    if (decoded) res.locals.user = decoded;
+  }
+
+  next();
+});
 app.use(limiter) // Apply rate limiting to all routes
 importRoutes(app, routeFolderPath); // Import all routes
 

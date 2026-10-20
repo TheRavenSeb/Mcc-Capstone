@@ -14,6 +14,13 @@ a module to import all the routes for the website
 const fs = require('fs');
 const path = require('path');
 
+
+
+/**
+ * Imports all route modules from a specified folder and registers them with the Express app.
+ * @param {ExpressApp} app 
+ * @param {String} routeFolderPath 
+ */
 async function importRoutes(app, routeFolderPath) {
 
     // Read all files in the route folder

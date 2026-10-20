@@ -15,6 +15,7 @@ const schema = new mongoose.Schema({
   Salt: { type: String, required: true },
   Email: { type: String, required: true, unique: true }, 
   DateJoined: { type: Date, default: Date.now },
+  
 
 
 });
