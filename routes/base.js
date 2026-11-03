@@ -30,6 +30,8 @@ router.get('/contact', (req, res) => {
 
 
 
+
+
 // Auth pages
 router.get('/login', (req, res) => {
     res.render('auth/login', { title: 'Login' });

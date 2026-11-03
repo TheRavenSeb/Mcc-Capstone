@@ -15,9 +15,9 @@ const schema = new mongoose.Schema({
   Formula: { type: String, required: true },
   Description: { type: String, required: true },
   Tags: { type: [String], required: true },
-  contributor: { type: String, required: true },
+  Contributor: { type: [String], required: true },
   createdAt: { type: Date, default: Date.now },
-  //Constances: { type: Map, of: Number, required: false }, //may use this later to store constants for formulas, but not needed for now
+  Constances: { type: Map, of: Number, required: false }, //may use this later to store constants for formulas, but not needed for now
 
 });
 module.exports = mongoose.model('Formula', schema);
