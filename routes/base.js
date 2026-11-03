@@ -15,7 +15,7 @@ const router = express.Router();
 
 
 router.get('/', (req, res) => {
-    res.render('home', { title: 'Home' });
+    res.render('index', { title: 'Home' });
 });
 
 router.get('/about', (req, res) => {
