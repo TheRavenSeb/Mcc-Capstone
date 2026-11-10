@@ -18,11 +18,12 @@ file: /views/home.ejs
 <main class="home-page">
 	<section class="home-intro" aria-labelledby="home-heading">
 		<div>
-			<p class="eyebrow">MCC Formula Library</p>
+			<p class="eyebrow">The NoteBook</p>
 			<h1 id="home-heading">A student's  <br><em>tool for a modern classroom,</em></h1>
-			<p class="intro-copy">A shared workspace for finding, understanding, and building the formulas that keep your coursework moving.</p>
+			<p class="intro-copy">A shared workspace for finding, understanding, and building a better classroom experience.</p>
 			<div class="intro-actions">
 				<a class="button button--primary" href="/all-formulas">Browse formulas <span aria-hidden="true">&#8594;</span></a>
+				<a class="button button--quiet" href="/english">Check your paper</a>
 				<% if (typeof user !== 'undefined' && user) { %>
 					<a class="button button--quiet" href="/formula/create">Create a formula</a>
 				<% } else { %>
