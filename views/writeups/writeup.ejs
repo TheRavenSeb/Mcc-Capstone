@@ -1,0 +1,52 @@
+<!--
+
+name: Caleb Thomas
+date: 11/17/26
+updated: 11/17/26
+class: Senior Capstone Project
+file: views/writeups/writeup.ejs
+========================================================
+ this page is for viewing writeups. It will render the writeup content based on the provided data (html, markdown, or md). If no content is available, it will display a message indicating that the write-up is not available.
+========================================================
+
+
+
+
+-->
+
+
+
+<%- include('../partials/header') %>
+
+<link rel="stylesheet" href="/css/theme.css">
+<link rel="stylesheet" href="/css/writeup.css">
+<script type="module" src="https://md-block.verou.me/md-block.js"></script>
+<script>
+
+    // grab the base URL from the current location
+    const baseUrl = window.location.origin;
+</script>
+
+
+<main class="writeup-page">
+	<article class="writeup" aria-labelledby="writeup-heading">
+		<h1 id="writeup-heading"><%= typeof title !== 'undefined' ? title : 'Project write-up' %></h1>
+
+
+		<div id="writeup-content" class="writeup-content">
+			<% if (typeof html !== 'undefined' && html) { %>
+				<%- html %>
+			<% } else if (typeof writeupFile !== 'undefined' && writeupFile) { %>
+				<md-block src="<%= /^https?:\/\//.test(writeupFile) ? writeupFile : `//${writeupFile}` %>"></md-block>
+			<% } else if (typeof markdown !== 'undefined' && markdown) { %>
+				<md-block><%= markdown %></md-block>
+			<% } else if (typeof md !== 'undefined' && md) { %>
+				<md-block></md-block>
+			<% } else { %>
+				<p class="empty-state">This write-up is not available.</p>
+			<% } %>
+		</div>
+	</article>
+</main>
+
+<%- include('../partials/footer') %>

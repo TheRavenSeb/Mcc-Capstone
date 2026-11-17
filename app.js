@@ -52,6 +52,7 @@ app.engine('ejs', require('ejs').__express);
 app.set('views', path.join(__dirname, 'views'));
 app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use('/scripts', express.static(path.join(__dirname, 'scripts')));
+app.use('/docs', express.static(path.join(__dirname, 'docs')));
 app.use(express.urlencoded({ extended: true })); // To parse form data
 app.use(bodyParser.json());
 app.use(cookieParser());

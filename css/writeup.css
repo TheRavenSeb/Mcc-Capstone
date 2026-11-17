@@ -1,0 +1,29 @@
+.writeup-content {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		max-width: 100%;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
+
+.writeup-content div,
+.writeup-content p,
+.writeup-content span {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.writeup-content img,
+.writeup-content iframe,
+.writeup-content video,
+.writeup-content table {
+    max-width: 100%;
+}
+
+.writeup-content pre {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
